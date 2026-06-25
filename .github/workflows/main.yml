@@ -35,7 +35,8 @@ jobs:
 
     with:
       working_directory: network/env/dev
-    secrets: inherit
+    secrets: 
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
   tflint:
     # needs: validate
