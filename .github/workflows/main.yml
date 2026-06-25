@@ -38,7 +38,7 @@ jobs:
     secrets: inherit
 
   tflint:
-    needs: validate
+    # needs: validate
     uses: ulse-amit1/repoB/.github/workflows/tflint.yml@main
 
     with:
