@@ -1,0 +1,41 @@
+name: "TFSec"
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      working_directory:
+        required: false
+        type: string
+        default: "."
+
+jobs:
+  tfsec:
+    name: "TFSec (${{ inputs.environment }})"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: TFSec Scan
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: ${{ inputs.working_directory }}
+          soft_fail: true
+          format: json
+          additional_args: --out tfsec-report.json
+
+      - name: Upload TFSec report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfsec-report-${{ inputs.environment }}
+          path: ${{ inputs.working_directory }}/tfsec-report.json
+          if-no-files-found: ignore
+          retention-days: 7

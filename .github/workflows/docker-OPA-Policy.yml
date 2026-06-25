@@ -1,0 +1,98 @@
+name: "docker opa-pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, qa, prod]
+        required: true
+      working_directory:
+        description: "Folder where tfplan.json exists"
+        default: "."
+        type: string      
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  opa:
+    runs-on: self-hosted
+    container:
+      image: ubuntu:latest
+    steps:
+      - name: Install Packages and GitHub CLI
+        run: |
+          apt-get update
+          apt-get install -y curl tar git
+          # Install GitHub CLI
+          curl -sSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          apt-get update
+          apt-get install -y gh jq
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Fetch Artifact and Evaluate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global --add safe.directory '*'         
+          RUN_ID=$(gh run list --workflow "docker-init.yml" --status success --limit 1 --json databaseId --jq '.[0].databaseId')  
+          if [ -z "$RUN_ID" ]; then
+            echo "Error: No successful run found for 'docker-init.yml'."
+            exit 1
+          fi          
+          echo "Using Run ID: $RUN_ID"
+          
+          #  Download Artifact
+          gh run download $RUN_ID --name "tfplan-json-${{ inputs.environment }}"
+          
+          # Install OPA
+          curl -sL -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          chmod +x opa
+          mv opa /usr/local/bin/         
+          echo "------------------------------------------"
+          echo "OPA Scanning Directory: $(pwd)"
+          echo "Scanning File: $(ls -l tfplan.json)"
+          echo "Policy Directory: ./policies"
+          echo "------------------------------------------"
+          echo "===== OPA VERSION ====="
+          opa version
+          
+          echo "===== POLICIES ====="
+          find policies -type f
+          
+          echo "===== PACKAGES ====="
+          grep -R "^package" policies || true
+          
+          echo "===== JSON VALIDATION ====="
+          jq . tfplan.json > /dev/null
+          echo "JSON OK"
+          
+          echo "===== RUNNING OPA ====="
+
+          set +e
+          
+          echo "Running OPA Evaluation..."
+          OPA_JSON=$(opa eval -f json -d policies -i tfplan.json "data")
+          echo "$OPA_JSON"
+          set -e
+          
+          #Log JSON Result
+          echo "$OPA_JSON" | jq '.'
+          
+          #  Add Results to GitHub Job Summary
+          echo "# OPA Evaluation Results" >> $GITHUB_STEP_SUMMARY
+          echo "### Scan Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scan Path:** $(pwd)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target File:** tfplan.json" >> $GITHUB_STEP_SUMMARY
+          echo '```json' >> $GITHUB_STEP_SUMMARY
+          echo "$OPA_JSON" | jq '.' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+        
+         

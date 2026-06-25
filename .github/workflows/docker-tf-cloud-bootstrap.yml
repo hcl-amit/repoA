@@ -1,0 +1,130 @@
+name: " docker main tfcloud-bootstrap-pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
+      organization:
+        description: "Terraform Cloud organization"
+        required: true
+        type: string
+
+     # workspace_name:
+     #    description: "Terraform Cloud workspace name"
+     #    required: true
+     #    type: string
+
+      working_directory:
+        description: "Terraform working directory"
+        required: false
+        default: "."
+        type: string
+
+jobs:
+  terraform-cloud-bootstrap:
+    runs-on: self-hosted
+
+    container:
+      image: ubuntu:latest
+
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
+      TF_VAR_workspace_name: statefile-${{ inputs.environment }}
+
+    steps:
+      - name: Install Packages
+        run: |
+          apt-get update
+          apt-get install -y wget unzip curl git
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        run: |
+          TERRAFORM_VERSION=1.13.0
+          wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+          unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+          mv terraform /usr/local/bin/
+          terraform version
+
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform validate      
+
+      - name: Debug Workspace Lookup
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          WORKSPACE_NAME="statefile-${{ inputs.environment }}"
+          ORG_NAME="${{ inputs.organization }}"
+
+          echo "Workspace: $WORKSPACE_NAME"
+          echo "Organization: $ORG_NAME"
+
+          curl -s \
+            -H "Authorization: Bearer $TF_TOKEN_app_terraform_io" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/${ORG_NAME}/workspaces/${WORKSPACE_NAME}"
+      - name: Check and Import Existing Workspace
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          set -e
+      
+          WORKSPACE_NAME="statefile-${{ inputs.environment }}"
+          ORG_NAME="${{ inputs.organization }}"
+      
+          HTTP_CODE=$(curl -s \
+            -o response.json \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer $TF_TOKEN_app_terraform_io" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/${ORG_NAME}/workspaces/${WORKSPACE_NAME}")
+      
+          if [ "$HTTP_CODE" = "200" ]; then
+      
+            terraform import \
+              -var="environment=${{ inputs.environment }}" \
+              -var="organization=${{ inputs.organization }}" \
+              -var="workspace_name=${WORKSPACE_NAME}" \
+              tfe_workspace.workspace \
+              "${ORG_NAME}/${WORKSPACE_NAME}" || true      
+          fi
+
+      - name: Verify State
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform state list || true
+                      
+      - name: Terraform Plan
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color \
+            -out=tfplan \
+            -var="environment=${{ inputs.environment }}" \
+            -var="organization=${{ inputs.organization }}" \
+            -var="workspace_name=statefile-${{ inputs.environment }}"
+            
+      - name: Terraform Apply
+        working-directory: ${{ inputs.working_directory }}
+        run: |
+          terraform apply \
+            -input=false \
+            -auto-approve \
+            tfplan

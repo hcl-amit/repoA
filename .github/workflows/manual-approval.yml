@@ -1,0 +1,25 @@
+name: "Manual Approval"
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: "Environment to gate approval for"
+
+jobs:
+  approval:
+    name: "Awaiting Approval (${{ inputs.environment }})"
+    runs-on: ubuntu-latest
+    environment: approver
+
+    steps:
+      - name: Approval checkpoint
+        run: |
+          echo "========================================"
+          echo "Manual approval granted."
+          echo "  Environment : ${{ inputs.environment }}"
+          echo "  Approved by : ${{ github.actor }}"
+          echo "  Run ID      : ${{ github.run_id }}"
+          echo "========================================"

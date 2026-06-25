@@ -1,0 +1,59 @@
+name: " docker Terraform Test Pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      working_directory:
+        description: "Terraform working directory"
+        required: false
+        default: "."
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-plan:
+    name: "Terraform Validate Plan"
+    runs-on: self-hosted
+    environment: ${{ inputs.environment }} 
+    
+    container:
+      image: hashicorp/terraform:1.9.0      
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+        
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_WORKSPACE: ${{ inputs.environment }}
+
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_USE_OIDC: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Debug File Path
+        run: ls -R
+      
+      - name: Terraform Init
+        run: terraform init -input=false
+        
+      - name: Terraform Test
+        working-directory: ${{ inputs.working_directory }}
+        run: terraform test
+
+  
+      

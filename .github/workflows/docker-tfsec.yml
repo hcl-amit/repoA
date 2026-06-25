@@ -1,0 +1,70 @@
+name: " docker TFSec pipeline"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, qa, prod]
+        required: true
+      working_directory:
+        description: "Terraform folder path"
+        default: "."
+        type: string
+
+jobs:
+  tfsec:
+    name: "TFSec Scan (${{ inputs.environment }})"
+    runs-on: self-hosted
+
+    steps:
+
+      - name: Fix Runner Workspace Permissions
+        run: |
+          sudo chown -R azureuser:azureuser /home/azureuser/actions-runner/_work || true
+          sudo rm -rf $GITHUB_WORKSPACE || true
+          mkdir -p $GITHUB_WORKSPACE
+          sudo chown -R $(id -u):$(id -g) $GITHUB_WORKSPACE
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Debug Workspace
+        run: |
+          echo "Scanning directory: ${{ inputs.working_directory }}"
+          ls -R "${{ inputs.working_directory }}"
+
+
+      - name: Run TFSec Scan (Container)
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/src \
+            aquasec/tfsec:v1.28 \
+            /src/${{ inputs.working_directory }} \
+            --format json \
+            --soft-fail \
+            --out /src/tfsec-report.json
+
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfsec-report
+          path: tfsec-report.json
+
+      - name: GitHub Step Summary
+        if: always()
+        run: |
+          echo "##  TFSec Security Scan Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "tfsec-report.json" ]; then
+            echo "###  Report Preview (Top 50 lines)" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            head -n 50 tfsec-report.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ No report generated" >> $GITHUB_STEP_SUMMARY
+          fi

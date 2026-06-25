@@ -1,0 +1,70 @@
+name: 'docker main tf cloud workspace pipeline'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      working_directory:
+        description: "Terraform working directory (relative to repo root)"
+        required: false
+        default: "."
+        type: string
+env:
+  TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+
+  TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
+  TF_VAR_workspace_name: statefile-${{ inputs.environment }}
+  
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  init:
+    name: "Init"
+    runs-on: self-hosted
+    
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    container:
+      image: hashicorp/terraform:1.9.0        
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4              
+
+      - name: Debug Folder
+        run: |
+          echo "Scanning directory: ${{ inputs.working_directory }}"
+          ls -R 
+      
+      - name: Terraform Init
+        run: terraform plan -no-color -out=tfplan > plan.txt
+        env:    
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      - name: Terraform Plan
+        env:
+          TF_VAR_tfe_token: ${{ secrets.TF_API_TOKEN }}
+          TF_VAR_workspace_name: statefile-dev
+        run: terraform plan -no-color -out=tfplan > plan.txt
+      
+      - name: Add Plan Summary
+        run: |
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat plan.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+
+
+    

@@ -1,0 +1,82 @@
+name: 'docker terraform init pipeline'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      working_directory:
+        description: "Terraform working directory"
+        required: false
+        default: "."
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-plan:
+    name: "Terraform Validate Plan"
+    runs-on: self-hosted
+    environment: ${{ inputs.environment }} 
+    
+    container:
+      image: hashicorp/terraform:1.9.0      
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+        
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      TF_WORKSPACE: statefile-${{ inputs.environment }}
+
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_USE_OIDC: "true"
+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Clean Terraform Cache
+        run: rm -rf .terraform .terraform.lock.hcl   
+      
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: |
+          terraform plan -input=false -out=tfplan -no-color > plan_summary.txt
+          terraform show -json tfplan > tfplan.json
+          
+      - name: Generate Plan Summary
+        if: always() 
+        run: |
+          if [ -f plan_summary.txt ]; then
+            echo "# Terraform Plan Summary for ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+            echo '```hcl' >> $GITHUB_STEP_SUMMARY        
+            cat plan_summary.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Plan failed, no summary file generated." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-json-${{ inputs.environment }}
+          path: |
+            ${{ inputs.working_directory }}/tfplan
+            ${{ inputs.working_directory }}/tfplan.json

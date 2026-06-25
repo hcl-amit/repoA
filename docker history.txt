@@ -1,0 +1,46 @@
+1  sudo install docker
+    2  sudo apt remove docker.io docker-compose docker-compose-v2 docker-doc podman-docker co
+    3  sudo apt install docker
+    4  azureuser@aayu:~$ sudo install docker
+    5  [sudo] password for azureuser:
+    6  install: missing destination file operand after 'docker'
+    7  Try 'install --help' for more information.
+    8  azureuser@aayu:~$ sudo apt remove docker.io docker-compose docker-compose-v2 docker-doc podman-docker co
+    9  Reading package lists... Done
+   10  Building dependency tree... Done
+   11  Reading state information... Done
+   12  E: Unable to locate package co
+   13  azureuser@aayu:~$ clear
+   14  E: Unable to locate package cosudo apt-get update
+   15  sudo apt update
+   16  mkdir actions-runner && cd actions-runner
+   17  curl -o actions-runner-linux-x64-2.335.1.tar.gz -L https://github.com/actions/runner/releases/download/v2.335.1/actions-runner-linux-x64-2.335.1.tar.gz
+   18  tar xzf ./actions-runner-linux-x64-2.335.1.tar.gz
+   19  ./config.sh --url https://github.com/aayushsinghal1984/IacPoject --token B6XNDRK2SCLUUFV6K4C7YWDKGO2CE
+   20  ./run.sh
+   21  sudo apt update
+   22  sudo apt upgrade -y
+   23  sudo apt install -y ca-certificates curl gnupg lsb-release
+   24  sudo install -m 0755 -d /etc/apt/keyrings
+   25  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+   26  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+   27  echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   28  echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   29  echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   30  sudo apt update
+   31  sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   32  docker -version
+   33  docker --help
+   34  docker --version
+   35  sudo usermod -aG docker $aayu
+   36  sudo usermod -aG docker $USER
+   37  whoami
+   38  $User
+   39  user
+   40  $user
+   41  echo $USER
+   42  sudo chmod 666 /var/run/docker.sock
+   43  history
