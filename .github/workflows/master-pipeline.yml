@@ -1,0 +1,166 @@
+name: "Master Terraform CI/CD Pipeline"
+
+# ============================================================
+# MASTER CALLER WORKFLOW
+# Orchestrates the full Terraform CI/CD pipeline by calling
+# all individual reusable (called) workflows in sequence.
+#
+# Called Workflow Files (must be in .github/workflows/):
+#   - called-tf-cloud-bootstrap.yml
+#   - called-tflint.yml
+#   - called-tftest.yml
+#   - called-tf-plan.yml
+#   - called-tfsec.yml
+#   - called-opa-policy.yml
+#   - called-tf-apply.yml
+#
+# Pipeline Stages:
+#   1. Bootstrap   → Terraform Cloud workspace setup
+#   2. Lint        → TFLint static analysis
+#   3. Test        → terraform test (.tftest.hcl)
+#   4. Plan        → terraform plan + artifact upload
+#   5. Sec Scan    → TFSec security scan (parallel with OPA)
+#   6. OPA         → OPA policy evaluation (parallel with TFSec)
+#   7. Apply       → terraform apply (only after all checks pass)
+# ============================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target deployment environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+
+      organization:
+        description: "Terraform Cloud organization name"
+        required: true
+        type: string
+        default: "HCL-TERRA-TEAM"
+
+      working_directory:
+        description: "Terraform working directory (default: repo root)"
+        required: false
+        default: "."
+        type: string
+
+      skip_bootstrap:
+        description: "Skip TF Cloud Bootstrap? (set true if workspace already exists)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+      skip_apply:
+        description: "Skip Terraform Apply? (plan-only run)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+# ============================================================
+# JOBS
+# ============================================================
+jobs:
+
+  # ── Stage 1: Bootstrap ──────────────────────────────────
+  bootstrap:
+    name: "Stage 1 · TF Cloud Bootstrap"
+    if: ${{ inputs.skip_bootstrap == 'false' }}
+    uses: ./.github/workflows/called-tf-cloud-bootstrap.yml
+    with:
+      environment: ${{ inputs.environment }}
+      organization: ${{ inputs.organization }}
+      working_directory: ${{ inputs.working_directory }}
+    secrets:
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+  # ── Stage 2: Lint ────────────────────────────────────────
+  lint:
+    name: "Stage 2 · TFLint"
+    needs: [bootstrap]
+    if: always() && !failure() && !cancelled()
+    uses: ./.github/workflows/called-tflint.yml
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+
+  # ── Stage 3: Test ────────────────────────────────────────
+  test:
+    name: "Stage 3 · Terraform Test"
+    needs: [lint]
+    if: always() && !failure() && !cancelled()
+    uses: ./.github/workflows/called-tftest.yml
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+    secrets:
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+  # ── Stage 4: Plan ────────────────────────────────────────
+  plan:
+    name: "Stage 4 · Terraform Plan"
+    needs: [test]
+    if: always() && !failure() && !cancelled()
+    uses: ./.github/workflows/called-tf-plan.yml
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+    secrets:
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+  # ── Stage 5a: TFSec (parallel with OPA) ─────────────────
+  tfsec:
+    name: "Stage 5a · TFSec Scan"
+    needs: [plan]
+    if: always() && !failure() && !cancelled()
+    uses: ./.github/workflows/called-tfsec.yml
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+
+  # ── Stage 5b: OPA Policy (parallel with TFSec) ──────────
+  opa:
+    name: "Stage 5b · OPA Policy Evaluation"
+    needs: [plan]
+    if: always() && !failure() && !cancelled()
+    uses: ./.github/workflows/called-opa-policy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Stage 6: Apply ───────────────────────────────────────
+  apply:
+    name: "Stage 6 · Terraform Apply"
+    needs: [tfsec, opa]
+    if: |
+      always() &&
+      !failure() &&
+      !cancelled() &&
+      inputs.skip_apply == 'false'
+    uses: ./.github/workflows/called-tf-apply.yml
+    with:
+      environment: ${{ inputs.environment }}
+      working_directory: ${{ inputs.working_directory }}
+    secrets:
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
