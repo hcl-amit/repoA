@@ -13,7 +13,7 @@ permissions:
 jobs:
 
   bootstrap:
-    uses: ulse-amit1/repoB/.github/workflows/bootstrap.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
 
     with:
       organization: HCL-TERRA-TEAM
