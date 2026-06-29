@@ -105,7 +105,7 @@ jobs:
       matrix:
         module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
 
-    uses: ulse-amit1/repoB/.github/workflows/tflint.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-tflint.yml@main
 
     with:
       module_name: ${{ matrix.module }}
@@ -124,7 +124,7 @@ jobs:
       matrix:
         module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
 
-    uses: ulse-amit1/repoB/.github/workflows/trivy.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-trivy.yml@main
 
     with:
       module_name: ${{ matrix.module }}
@@ -190,7 +190,7 @@ jobs:
       matrix:
         module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
 
-    uses: ulse-amit1/repoB/.github/workflows/opa.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-opa.yml@main
 
     with:
       module_name: ${{ matrix.module }}
