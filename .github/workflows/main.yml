@@ -85,7 +85,9 @@ jobs:
         run: echo "Manual approval completed"
 
   apply:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'pull_request' && github.base_ref == 'main')
     needs:
       - manual-approval
     uses: ulse-amit1/repoB/.github/workflows/terraform-apply.yml@main
