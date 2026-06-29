@@ -7,11 +7,8 @@ on:
     inputs:
 
       module_name:
-
-        description: Child module name
-
+        description: "Module name(s) to deploy — single or comma-separated (e.g. resource-group,virtual-network)"
         required: true
-
         default: resource-group
 
 permissions:
@@ -28,7 +25,7 @@ jobs:
 
     with:
 
-      ulse-amit1nization: HCL-TERRA-TEAM
+      organization: HCL-TERRA-TEAM
 
       workspace_name: dev-workspace
 
@@ -91,6 +88,12 @@ jobs:
     secrets:
 
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   plan:
 
