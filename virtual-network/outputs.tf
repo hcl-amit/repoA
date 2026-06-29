@@ -1,19 +1,10 @@
-output "id" {
-  value = azurerm_virtual_network.this.id
+output "virtual_network_id" {
+  description = "The ID of the virtual network"
+  value       = azurerm_virtual_network.virtual_network.id
 }
 
-output "name" {
-  value = azurerm_virtual_network.this.name
+output "virtual_network_name" {
+  description = "The name of the virtual network"
+  value       = azurerm_virtual_network.virtual_network.name
 }
 
-output "address_space" {
-  value = azurerm_virtual_network.this.address_space
-}
-
-output "guid" {
-  value = azurerm_virtual_network.this.guid
-}
-
-output "resource_id" {
-  value = azurerm_virtual_network.this.guid
-}

@@ -1,26 +1,25 @@
 module "virtual_network" {
-
   source = "../"
 
-  name                = "vnet-demo"
-  resource_group_name = "rg-demo"
+  virtual_network_name                = "vnet-app-dev-eastus-001"
+  virtual_network_resource_group_name = "rg-app-dev-eastus-001"
+  virtual_network_location            = "East US"
 
-  location = "Central India"
+  virtual_network_address_space = ["10.0.0.0/16"]
 
-  address_space = [
-    "10.10.0.0/16"
+  virtual_network_dns_servers = [
+    "8.8.8.8",
+    "8.8.4.4"
   ]
 
-  dns_servers = []
-
-  tags = {
-
-    Environment = "Dev"
-
-    Owner = "Platform Team"
-
-    Application = "Networking"
-
+  virtual_network_tags = {
+    Environment  = "dev"
+    Application  = "myapp"
+    Owner        = "network-team"
+    CostCenter   = "ULS-12345"
+    BusinessUnit = "IT"
   }
 
+  ddos_protection_plan_id = null
+  ddos_protection_enable  = false
 }
