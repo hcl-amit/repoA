@@ -6,237 +6,156 @@ on:
 
     inputs:
 
-      modules:
-        description: "Comma separated modules (Example: resource-group,virtual-network,subnet)"
+      module_name:
+
+        description: Child module name
+
         required: true
+
         default: resource-group
 
-      deployment_action:
-        description: "Deployment Action"
-        required: true
-        type: choice
-        options:
-          - plan
-          - apply
-
 permissions:
+
   id-token: write
+
   contents: read
 
 jobs:
 
-###############################################################################
-# Bootstrap Terraform Cloud Workspace
-###############################################################################
-
   bootstrap:
 
-    uses: ulse-amit1/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
 
     with:
+
       organization: HCL-TERRA-TEAM
-      workspace_name: module-workspace
+
+      workspace_name: dev-workspace
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
+
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-###############################################################################
-# Convert Module List to Matrix
-###############################################################################
-
-  discover-modules:
-
-    needs: bootstrap
-
-    runs-on: self-hosted
-
-    outputs:
-      modules: ${{ steps.modules.outputs.modules }}
-
-    steps:
-
-      - id: modules
-        shell: bash
-        run: |
-
-          MODULES=$(echo "${{ inputs.modules }}" \
-            | tr ',' '\n' \
-            | sed 's/^ *//;s/ *$//' \
-            | jq -R -s -c 'split("\n")[:-1]')
-
-          echo "modules=$MODULES" >> "$GITHUB_OUTPUT"
-
-###############################################################################
-# Validate
-###############################################################################
 
   validate:
 
-    needs: discover-modules
+    needs: bootstrap
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-validate.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-validate.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
-###############################################################################
-# TFLint
-###############################################################################
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
   tflint:
 
     needs: validate
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-tflint.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-tflint.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
 
-###############################################################################
-# Trivy
-###############################################################################
+      module_name: ${{ inputs.module_name }}
 
   trivy:
 
     needs: tflint
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-trivy.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-trivy.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
 
-###############################################################################
-# Terraform Test
-###############################################################################
+      module_name: ${{ inputs.module_name }}
 
   terraform-test:
 
     needs: trivy
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-test.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-test.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
-###############################################################################
-# Terraform Plan
-###############################################################################
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
   plan:
 
     needs: terraform-test
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-plan.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-plan.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-###############################################################################
-# OPA
-###############################################################################
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   opa:
 
     needs: plan
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-opa.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-opa.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
 
-###############################################################################
-# Manual Approval
-###############################################################################
+      module_name: ${{ inputs.module_name }}
+
+    secrets:
+
+      GH_PAT: ${{ secrets.GH_PAT }}
 
   manual-approval:
 
-    if: inputs.deployment_action == 'apply'
-
     needs: opa
 
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
-    environment: Manual-Approval
+    environment: Production-Approval
 
     steps:
 
-      - name: Waiting for Approval
-        run: echo "Deployment Approved"
+      - name: Approval
 
-###############################################################################
-# Terraform Apply
-###############################################################################
+        run: echo "Approved"
 
   apply:
 
-    if: inputs.deployment_action == 'apply'
-
     needs: manual-approval
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-apply.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-apply.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
+
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

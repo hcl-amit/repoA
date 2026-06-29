@@ -1,205 +1,132 @@
 name: Terraform CI Pipeline
 
 on:
+
   push:
     branches:
       - develop
-      - 'feature/**'
+      - feature/**
 
   pull_request:
     branches:
       - main
 
+  workflow_dispatch:
+
+    inputs:
+
+      module_name:
+        description: Child module name
+        required: true
+        default: resource-group
+
 permissions:
+
   id-token: write
   contents: read
 
 jobs:
 
-###############################################################################
-# Bootstrap Terraform Cloud Workspace
-###############################################################################
-
   bootstrap:
 
-    uses: ulse-amit1/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
 
     with:
+
       organization: HCL-TERRA-TEAM
-      workspace_name: module-workspace
+
+      workspace_name: dev-workspace
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
+
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-###############################################################################
-# Detect Changed Child Modules
-###############################################################################
-
-  discover-modules:
-
-    needs: bootstrap
-
-    runs-on: self-hosted
-
-    outputs:
-      modules: ${{ steps.detect.outputs.modules }}
-
-    steps:
-
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - id: detect
-        shell: bash
-        run: |
-
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-
-            git fetch origin ${{ github.base_ref }}
-
-            MODULES=$(git diff --name-only origin/${{ github.base_ref }} HEAD \
-              | cut -d/ -f1 \
-              | sort -u \
-              | jq -R -s -c 'split("\n")[:-1]')
-
-          else
-
-            git fetch origin develop
-
-            MODULES=$(git diff --name-only HEAD~1 HEAD \
-              | cut -d/ -f1 \
-              | sort -u \
-              | jq -R -s -c 'split("\n")[:-1]')
-
-          fi
-
-          echo "modules=$MODULES" >> "$GITHUB_OUTPUT"
-
-###############################################################################
-# Validate
-###############################################################################
 
   validate:
 
-    needs: discover-modules
+    needs: bootstrap
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-validate.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-validate.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
-###############################################################################
-# TFLint
-###############################################################################
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
   tflint:
 
     needs: validate
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/tflint.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-tflint.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
 
-###############################################################################
-# Trivy
-###############################################################################
+      module_name: ${{ inputs.module_name }}
 
   trivy:
 
     needs: tflint
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/trivy.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-trivy.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
 
-###############################################################################
-# Terraform Test
-###############################################################################
+      module_name: ${{ inputs.module_name }}
 
   terraform-test:
 
     needs: trivy
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-test.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-test.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
-###############################################################################
-# Terraform Plan
-###############################################################################
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
 
   plan:
 
     needs: terraform-test
 
-    strategy:
-      fail-fast: false
-
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-plan.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-plan.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
 
     secrets:
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-###############################################################################
-# OPA
-###############################################################################
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
   opa:
 
     needs: plan
 
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
-
-    uses: ulse-amit1/repoB/.github/workflows/opa.yml@main
+    uses: OrgA/repoB/.github/workflows/terraform-opa.yml@main
 
     with:
-      module_name: ${{ matrix.module }}
+
+      module_name: ${{ inputs.module_name }}
+
+    secrets:
+
+      GH_PAT: ${{ secrets.GH_PAT }}
