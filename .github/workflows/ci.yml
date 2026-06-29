@@ -196,7 +196,6 @@ jobs:
 
     strategy:
       fail-fast: false
-
       matrix:
         module: ${{ fromJson(needs.discover-modules.outputs.modules) }}
 
