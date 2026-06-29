@@ -24,11 +24,11 @@ jobs:
 
   bootstrap:
 
-    uses: OrgA/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
 
     with:
 
-      organization: HCL-TERRA-TEAM
+      ulse-amit1nization: HCL-TERRA-TEAM
 
       workspace_name: dev-workspace
 
@@ -48,7 +48,7 @@ jobs:
 
     needs: bootstrap
 
-    uses: OrgA/repoB/.github/workflows/terraform-validate.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-validate.yml@main
 
     with:
 
@@ -62,7 +62,7 @@ jobs:
 
     needs: validate
 
-    uses: OrgA/repoB/.github/workflows/terraform-tflint.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-tflint.yml@main
 
     with:
 
@@ -72,7 +72,7 @@ jobs:
 
     needs: tflint
 
-    uses: OrgA/repoB/.github/workflows/terraform-trivy.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-trivy.yml@main
 
     with:
 
@@ -82,7 +82,7 @@ jobs:
 
     needs: trivy
 
-    uses: OrgA/repoB/.github/workflows/terraform-test.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-test.yml@main
 
     with:
 
@@ -96,7 +96,7 @@ jobs:
 
     needs: terraform-test
 
-    uses: OrgA/repoB/.github/workflows/terraform-plan.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-plan.yml@main
 
     with:
 
@@ -116,7 +116,7 @@ jobs:
 
     needs: plan
 
-    uses: OrgA/repoB/.github/workflows/terraform-opa.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-opa.yml@main
 
     with:
 
@@ -144,7 +144,7 @@ jobs:
 
     needs: manual-approval
 
-    uses: OrgA/repoB/.github/workflows/terraform-apply.yml@main
+    uses: ulse-amit1/repoB/.github/workflows/terraform-apply.yml@main
 
     with:
 
