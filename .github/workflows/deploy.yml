@@ -1,0 +1,153 @@
+name: Terraform Deployment Pipeline
+
+on:
+
+  workflow_dispatch:
+
+    inputs:
+
+      module_name:
+
+        description: Child module name
+
+        required: true
+
+        default: resource-group
+
+permissions:
+
+  id-token: write
+
+  contents: read
+
+jobs:
+
+  bootstrap:
+
+    uses: OrgA/repoB/.github/workflows/terraform-cloud-bootstrap.yml@main
+
+    with:
+
+      organization: HCL-TERRA-TEAM
+
+      workspace_name: dev-workspace
+
+      module_name: ${{ inputs.module_name }}
+
+    secrets:
+
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  validate:
+
+    needs: bootstrap
+
+    uses: OrgA/repoB/.github/workflows/terraform-validate.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+  tflint:
+
+    needs: validate
+
+    uses: OrgA/repoB/.github/workflows/tflint.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+  trivy:
+
+    needs: tflint
+
+    uses: OrgA/repoB/.github/workflows/trivy.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+  terraform-test:
+
+    needs: trivy
+
+    uses: OrgA/repoB/.github/workflows/terraform-test.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+    secrets:
+
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+  plan:
+
+    needs: terraform-test
+
+    uses: OrgA/repoB/.github/workflows/terraform-plan.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+    secrets:
+
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  opa:
+
+    needs: plan
+
+    uses: OrgA/repoB/.github/workflows/opa.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+  manual-approval:
+
+    needs: opa
+
+    runs-on: self-hosted
+
+    environment: Production-Approval
+
+    steps:
+
+      - name: Approval
+
+        run: echo "Approved"
+
+  apply:
+
+    needs: manual-approval
+
+    uses: OrgA/repoB/.github/workflows/terraform-apply.yml@main
+
+    with:
+
+      module_name: ${{ inputs.module_name }}
+
+    secrets:
+
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
