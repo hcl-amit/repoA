@@ -14,6 +14,6 @@ output "guid" {
   value = azurerm_virtual_network.this.guid
 }
 
-output "resource_guid" {
-  value = azurerm_virtual_network.this.resource_guid
+output "resource_id" {
+  value = azurerm_virtual_network.this.guid
 }
