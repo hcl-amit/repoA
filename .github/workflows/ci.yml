@@ -37,7 +37,7 @@ jobs:
 
       workspace_name: dev-workspace
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
 
     secrets:
 
@@ -57,7 +57,7 @@ jobs:
 
     with:
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
 
     secrets:
 
@@ -71,7 +71,7 @@ jobs:
 
     with:
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
 
   trivy:
 
@@ -81,7 +81,7 @@ jobs:
 
     with:
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
 
   terraform-test:
 
@@ -91,7 +91,7 @@ jobs:
 
     with:
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
 
     secrets:
 
@@ -111,7 +111,7 @@ jobs:
 
     with:
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
 
     secrets:
 
@@ -131,4 +131,4 @@ jobs:
 
     with:
 
-      module_name: ${{ inputs.module_name }}
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
