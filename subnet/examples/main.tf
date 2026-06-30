@@ -17,6 +17,5 @@ module "subnet" {
   ]
 
   service_endpoint_policy_ids = []
-
   delegations = []
 }
