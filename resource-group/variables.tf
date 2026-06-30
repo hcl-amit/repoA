@@ -1,15 +1,14 @@
-variable "name" {
-  description = "Resource Group Name"
+variable "resource_group_location" {
   type        = string
+  description = "Enter location for Resource Group deployment"
 }
 
-variable "location" {
-  description = "Azure Region"
-  type        = string
-}
-
-variable "tags" {
-  description = "Tags"
+variable "resource_group_tags" {
   type        = map(string)
   default     = {}
+  description = "Enter tags for the resource group"
+}
+variable "resource_group_name" {
+  type        = string
+  description = "Enter the name for resource group"
 }
