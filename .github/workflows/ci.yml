@@ -91,7 +91,7 @@ jobs:
   # the reviewer an email automatically), tags it for the 24-hour
   # expiry check, and enables auto-merge so it merges the instant
   # the reviewer approves it.
-  # ---------------------------------------------------------------
+  # --------------------------------------------------------------
   auto-pr:
 
     needs: trivy
