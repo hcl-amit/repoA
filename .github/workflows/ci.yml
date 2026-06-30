@@ -103,32 +103,81 @@ jobs:
 
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-  plan:
+  # plan:
 
+  #   needs: terraform-test
+
+  #   uses: ulse-amit1/repoB/.github/workflows/terraform-plan.yml@main
+
+  #   with:
+
+  #     module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
+
+  #   secrets:
+
+  #     TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+
+  #     AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+  #     AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+  #     AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+  # opa:
+
+  #   needs: plan
+
+  #   uses: ulse-amit1/repoB/.github/workflows/terraform-opa.yml@main
+
+  #   with:
+
+  #     module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
+
+  auto-pr:
+ 
     needs: terraform-test
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-plan.yml@main
-
-    with:
-
-      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
-
-    secrets:
-
-      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
-
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-  opa:
-
-    needs: plan
-
-    uses: ulse-amit1/repoB/.github/workflows/terraform-opa.yml@main
-
-    with:
-
-      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
+ 
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+ 
+    runs-on: ubuntu-latest
+ 
+    steps:
+ 
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+ 
+      - name: Create Pull Request (develop -> main)
+        id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+ 
+          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+ 
+          if [ -n "$EXISTING_PR" ]; then
+            echo "Open PR already exists: #$EXISTING_PR"
+            echo "pr_number=$EXISTING_PR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+ 
+          PR_URL=$(gh pr create \
+            --base main \
+            --head develop \
+            --title "Auto PR: develop -> main ($(date -u +'%Y-%m-%d %H:%M UTC'))" \
+            --body "Automatically raised after develop pipeline (bootstrap, validate, tflint, trivy) passed. Requires approval within 24 hours or this PR will be auto-closed." \
+            --label "auto-pr" \
+            --reviewer "${{ vars.PR_REVIEWER }}")
+ 
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+ 
+      - name: Enable Auto-Merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ steps.create_pr.outputs.pr_number }} \
+            --auto \
+            --squash
