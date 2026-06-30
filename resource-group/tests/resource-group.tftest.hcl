@@ -103,8 +103,8 @@ run "unit_validate_resource_group_configuration" {
   }
 
   assert {
-    condition     = azurerm_resource_group.resource_group.location == lower(replace(var.location, " ", ""))
-    error_message = "Resource Group location is not mapped correctly from var.location."
+    condition     = azurerm_resource_group.resource_group.location == lower(replace(var.resource_group_location, " ", ""))
+    error_message = "Resource Group location is not mapped correctly from var.resource_group_location."
   }
 
   assert {
