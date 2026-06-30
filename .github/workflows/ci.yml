@@ -148,6 +148,15 @@ jobs:
         with:
           fetch-depth: 0
  
+      - name: Ensure auto-pr Label Exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "auto-pr" \
+            --description "Auto-raised PR from develop pipeline" \
+            --color "0E8A16" \
+            --force
+ 
       - name: Create Pull Request (develop -> main)
         id: create_pr
         env:
@@ -181,3 +190,43 @@ jobs:
           gh pr merge ${{ steps.create_pr.outputs.pr_number }} \
             --auto \
             --squash
+ 
+  # ---------------------------------------------------------------
+  # Manual / PR-triggered only — these still run on workflow_dispatch
+  # and on pull_request events, but are SKIPPED on a plain push to
+  # develop (since the client only wants up to trivy on push).
+  # ---------------------------------------------------------------
+ 
+  plan:
+ 
+    needs: auto-pr
+ 
+    if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+ 
+    uses: ulse-amit1/repoB/.github/workflows/terraform-plan.yml@main
+ 
+    with:
+ 
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
+ 
+    secrets:
+ 
+      TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
+ 
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+ 
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+ 
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+ 
+  opa:
+ 
+    needs: plan
+ 
+    if: github.event_name != 'push' || github.ref != 'refs/heads/develop'
+ 
+    uses: ulse-amit1/repoB/.github/workflows/terraform-opa.yml@main
+ 
+    with:
+ 
+      module_name: ${{ inputs.module_name || 'resource-group,virtual-network' }}
