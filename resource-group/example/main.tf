@@ -13,4 +13,3 @@ module "resource_group" {
     ManagedBy          = "terraform"
   }
 }
-
