@@ -1,11 +1,11 @@
 output "resource_group_id" {
   description = "The ID of the created resource group"
-  value       = module.resource_group.resource_group.id
+  value       = module.resource_group.resource_group_id
 }
 
 output "resource_group_name" {
   description = "The name of the created resource group"
-  value       = "my-example-rg"
+  value       = module.resource_group.resource_group_name
 }
 
 output "resource_group_location" {
