@@ -132,7 +132,3 @@ jobs:
     with:
 
       module_name: ${{ inputs.module_name }}
-
-    secrets:
-
-      GH_PAT: ${{ secrets.GH_PAT }}
